@@ -122,11 +122,11 @@ void Patrol::laserscan_callback(
 
     yaw_error_ = direction__yaw_ - current_yaw_;
 
-    RCLCPP_INFO(this->get_logger(), "DY: %f, C: %f, YE: %f", direction__yaw_,
-                current_yaw_, yaw_error_);
+    // RCLCPP_INFO(this->get_logger(), "DY: %f, C: %f, YE: %f", direction__yaw_,
+    //            current_yaw_, yaw_error_);
 
     // If the yaw error is significant, rotate towards the target
-    if (std::abs(yaw_error_) > 0.3) // 0.05 radians threshold for orientation
+    if (std::abs(yaw_error_) > 0.2) // 0.05 radians threshold for orientation
     {
       twist_msg.angular.z = direction_ / 2;
     } else {
