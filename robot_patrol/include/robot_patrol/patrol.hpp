@@ -1,10 +1,15 @@
+#ifndef PATROL_HPP
+#define PATROL_HPP
+
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/qos.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <rclcpp/callback_group.hpp>
@@ -55,3 +60,5 @@ private:
   std::condition_variable condition_;
   bool callback1_done_;
 };
+
+#endif

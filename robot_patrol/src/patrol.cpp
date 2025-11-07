@@ -79,8 +79,15 @@ void Patrol::laserscan_callback(
         true; // Temporarily pause the update for the it, index and direction_
               // until the current yaw error is eliminated
 
-    it = std::max_element(laser_msg->ranges.begin() + 50,
-                          laser_msg->ranges.begin() + 150);
+    it = std::max_element(
+        laser_msg->ranges.begin() + 50, laser_msg->ranges.begin() + 150,
+        [](float a, float b) {
+          // Replace 'inf' values with '-inf' for comparison purposes
+          return (std::isfinite(a) ? a
+                                   : -std::numeric_limits<float>::infinity()) <
+                 (std::isfinite(b) ? b
+                                   : -std::numeric_limits<float>::infinity());
+        });
     index = std::distance(laser_msg->ranges.begin() + 50, it);
 
     RCLCPP_INFO(this->get_logger(), "Maximum distancd: %f at %d", *it, index);
