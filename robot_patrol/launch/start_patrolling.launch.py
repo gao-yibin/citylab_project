@@ -16,7 +16,7 @@ def generate_launch_description():
         executable='rviz2', 
         name='rviz', 
         output='screen', 
-        arguments=['-d', '/home/user/.rviz2/patrol.rviz'],
+        arguments=['-d', '/home/user/ros2_ws/src/citylab_project/robot_patrol/rviz2/robot_patrol.rviz'],
     )
 
     return launch.LaunchDescription([
