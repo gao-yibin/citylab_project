@@ -13,8 +13,6 @@ Patrol::Patrol()
   // Create a reentrant callback group
   reentrant_group_ =
       this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-  mutually_exclusive_group_ =
-      this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
   // Set up subscription options to use the reentrant callback group
   rclcpp::SubscriptionOptions sub_options;
@@ -34,12 +32,10 @@ Patrol::Patrol()
   twist_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>(
       "/fastbot_1/cmd_vel", 10);
 
-  // Timer
-  timer_ =
-      this->create_wall_timer(std::chrono::milliseconds(100), // timer interval
-                              std::bind(&Patrol::timer_callback, this),
-                              rclcpp::CallbackGroup::SharedPtr(
-                                  mutually_exclusive_group_)); // timer callback
+  timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(100), // 10Hz
+      std::bind(&Patrol::timer_callback, this),
+      rclcpp::CallbackGroup::SharedPtr(reentrant_group_));
 
   RCLCPP_INFO(this->get_logger(), "robot_patrol_node Ready...");
 }
@@ -107,7 +103,7 @@ void Patrol::laserscan_callback(
                 direction__yaw_, current_yaw_);
   } else { // Turning and dealing with the shifting at the edge
 
-    if (direction__yaw_shift_alart && std::abs(current_yaw_) > 2.9) {
+    if (direction__yaw_shift_alart && std::abs(current_yaw_) > 3.0) {
       if (current_yaw_ * direction__yaw_ <= 0) {
         if (direction__yaw_ >= 0) {
           direction__yaw_ = std::fmod(direction__yaw_ + M_PI, 2 * M_PI) - M_PI;
@@ -117,16 +113,11 @@ void Patrol::laserscan_callback(
           direction__yaw_shift_alart = false;
         }
       }
-      RCLCPP_INFO(this->get_logger(), "Close to the shift point! ");
     }
 
-    yaw_error_ = direction__yaw_ - current_yaw_;
-
-    // RCLCPP_INFO(this->get_logger(), "DY: %f, C: %f, YE: %f", direction__yaw_,
-    //            current_yaw_, yaw_error_);
-
     // If the yaw error is significant, rotate towards the target
-    if (std::abs(yaw_error_) > 0.2) // 0.05 radians threshold for orientation
+    if (std::abs(direction__yaw_ - current_yaw_) >
+        0.25) // 0.25 radians threshold for orientation
     {
       twist_msg.angular.z = direction_ / 2;
     } else {

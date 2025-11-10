@@ -26,7 +26,6 @@ public:
 
 private:
   rclcpp::CallbackGroup::SharedPtr reentrant_group_;
-  rclcpp::CallbackGroup::SharedPtr mutually_exclusive_group_;
 
   // Timer
   void timer_callback();
