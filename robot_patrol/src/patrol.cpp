@@ -3,10 +3,10 @@
 
 Patrol::Patrol()
     : Node("robot_patrol_node"), min_distance(0.0), max_distance(0.0),
-      angle_increment_(0.03157376870512962), index(0), case_index(0),
+      angle_increment_(0.0315), index(0), case_index(0),
       direction__update_lock(false), direction__yaw_shift_alart(false),
-      direction_(0.0), direction__yaw_(0.0), yaw_error_(0.0), roll(0.0),
-      pitch(0.0), current_yaw_(0.0), callback1_done_(false) {
+      turning_(false), direction_(0.0), direction__yaw_(0.0), yaw_error_(0.0),
+      roll(0.0), pitch(0.0), current_yaw_(0.0), callback1_done_(false) {
 
   twist_msg.linear.x = 0.1;
 
@@ -19,18 +19,18 @@ Patrol::Patrol()
   sub_options.callback_group = reentrant_group_;
 
   odom_subscriber_ = this->create_subscription<nav_msgs::msg::Odometry>(
-      "/odom", 10,
+      "/fastbot_1/odom", 10,
       std::bind(&Patrol::odometry_callback, this, std::placeholders::_1),
       sub_options);
 
   auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
   laser_subscriber_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-      "/scan", qos,
+      "/fastbot_1/scan", qos,
       std::bind(&Patrol::laserscan_callback, this, std::placeholders::_1),
       sub_options);
 
-  twist_publisher_ =
-      this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+  twist_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>(
+      "/fastbot_1/cmd_vel", 10);
 
   timer_ = this->create_wall_timer(
       std::chrono::milliseconds(100), // 10Hz
@@ -54,14 +54,44 @@ void Patrol::odometry_callback(
   m.getRPY(roll, pitch, current_yaw_);
   callback1_done_ = true;
   condition_.notify_one();
+
+  if (turning_) {
+    // Turning and dealing with the shifting at the edge
+    if (direction__yaw_shift_alart) {
+      if (current_yaw_ / direction__yaw_ <= 0) {
+        if (direction__yaw_ >= 0) {
+          direction__yaw_ = std::fmod(direction__yaw_ + M_PI, 2 * M_PI) - M_PI;
+          direction__yaw_shift_alart = false;
+        } else {
+          direction__yaw_ = direction__yaw_ + 2 * M_PI;
+          direction__yaw_shift_alart = false;
+        }
+      }
+    }
+
+    // If the yaw error is significant, rotate towards the target
+    if (std::abs(direction__yaw_ - current_yaw_) >
+        0.15) // 0.15 radians threshold for orientation
+    {
+      twist_msg.angular.z = direction_ / 2.0;
+    } else {
+      twist_msg.angular.z = 0.0;
+      direction__update_lock =
+          false; // Release the lock for updating the yaw error calculation
+      turning_ = false;
+      RCLCPP_INFO(this->get_logger(),
+                  "Direction yaw: %f, Current yaw: %f, F: %f", direction__yaw_,
+                  current_yaw_, direction__yaw_ - current_yaw_);
+    }
+  }
 }
 
 void Patrol::laserscan_callback(
     const sensor_msgs::msg::LaserScan::SharedPtr laser_msg) {
   std::unique_lock<std::mutex> lock(mutex_);
 
-  min_distance = *std::min_element(laser_msg->ranges.begin() + 99,
-                                   laser_msg->ranges.begin() + 99);
+  min_distance = *std::min_element(laser_msg->ranges.begin() + 100,
+                                   laser_msg->ranges.begin() + 100);
 
   condition_.wait(lock, [this] { return callback1_done_; });
 
@@ -86,45 +116,23 @@ void Patrol::laserscan_callback(
         });
     index = std::distance(laser_msg->ranges.begin() + 50, it);
 
-    RCLCPP_INFO(this->get_logger(), "Maximum distancd: %f at %d", *it, index);
-
     direction__yaw_ = (index - 50) * angle_increment_ +
                       current_yaw_; // direction_yaw_ from global current_yaw_,
                                     // fixed each time
     direction_ =
         direction__yaw_ - current_yaw_; // The angle from the front X axis
+
+    RCLCPP_INFO(this->get_logger(), "direction_: %f at %d", direction_, index);
+
     if (std::abs(direction__yaw_) >
         M_PI) { // If the abs of direction__yaw_ is larger than pi then it means
                 // the robot is going to rotate pass the shifting yaw
       direction__yaw_shift_alart = true;
     }
+    turning_ = true;
 
     RCLCPP_INFO(this->get_logger(), "Direction yaw: %f, Current yaw: %f",
                 direction__yaw_, current_yaw_);
-  } else { // Turning and dealing with the shifting at the edge
-
-    if (direction__yaw_shift_alart && std::abs(current_yaw_) > 3.0) {
-      if (current_yaw_ * direction__yaw_ <= 0) {
-        if (direction__yaw_ >= 0) {
-          direction__yaw_ = std::fmod(direction__yaw_ + M_PI, 2 * M_PI) - M_PI;
-          direction__yaw_shift_alart = false;
-        } else {
-          direction__yaw_ = direction__yaw_ + 2 * M_PI;
-          direction__yaw_shift_alart = false;
-        }
-      }
-    }
-
-    // If the yaw error is significant, rotate towards the target
-    if (std::abs(direction__yaw_ - current_yaw_) >
-        0.25) // 0.25 radians threshold for orientation
-    {
-      twist_msg.angular.z = direction_ / 2;
-    } else {
-      direction__update_lock =
-          false; // Release the lock for updating the yaw error calculation
-      twist_msg.angular.z = 0.0;
-    }
   }
 }
 
