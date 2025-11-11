@@ -41,7 +41,7 @@ private:
   float min_distance, max_distance;
   const float angle_increment_;
   int index, case_index;
-  bool direction__update_lock, direction__yaw_shift_alart;
+  bool direction__update_lock, direction__yaw_shift_alart, turning_;
 
   // Odometry Part
   void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr odom_msg);
