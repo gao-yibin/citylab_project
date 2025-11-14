@@ -19,18 +19,18 @@ Patrol::Patrol()
   sub_options.callback_group = reentrant_group_;
 
   odom_subscriber_ = this->create_subscription<nav_msgs::msg::Odometry>(
-      "/fastbot_1/odom", 10,
+      "/odom", 10,
       std::bind(&Patrol::odometry_callback, this, std::placeholders::_1),
       sub_options);
 
   auto qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
   laser_subscriber_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-      "/fastbot_1/scan", qos,
+      "/scan", qos,
       std::bind(&Patrol::laserscan_callback, this, std::placeholders::_1),
       sub_options);
 
-  twist_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>(
-      "/fastbot_1/cmd_vel", 10);
+  twist_publisher_ =
+      this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
   timer_ = this->create_wall_timer(
       std::chrono::milliseconds(100), // 10Hz
