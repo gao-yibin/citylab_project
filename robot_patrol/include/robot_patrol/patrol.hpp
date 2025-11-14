@@ -37,10 +37,10 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
       laser_subscriber_;
 
-  std::vector<float>::iterator it;
+  std::vector<float>::iterator it_left, it_right;
   float min_distance, max_distance;
   const float angle_increment_;
-  int index, case_index;
+  int index_left, index_right;
   bool direction__update_lock, direction__yaw_shift_alart, turning_;
 
   // Odometry Part

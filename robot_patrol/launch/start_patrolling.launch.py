@@ -1,6 +1,6 @@
 import launch
 from launch_ros.actions import Node
-
+from launch.actions import TimerAction
 
 def generate_launch_description():
     # Nodes
@@ -22,3 +22,14 @@ def generate_launch_description():
     return launch.LaunchDescription([
         patrol_node, RViz
     ])
+
+    TimerAction(
+            period=5.0,  # delay in seconds
+            actions=[
+                Node(
+                    package='rviz2',
+                    executable='rviz2',
+                    name='rviz2'
+                ),
+            ]
+        )

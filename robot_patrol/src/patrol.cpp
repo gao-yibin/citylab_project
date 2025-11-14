@@ -3,7 +3,7 @@
 
 Patrol::Patrol()
     : Node("robot_patrol_node"), min_distance(0.0), max_distance(0.0),
-      angle_increment_(0.0315), index(0), case_index(0),
+      angle_increment_(0.0315), index_left(0), index_right(0),
       direction__update_lock(false), direction__yaw_shift_alart(false),
       turning_(false), direction_(0.0), direction__yaw_(0.0), yaw_error_(0.0),
       roll(0.0), pitch(0.0), current_yaw_(0.0), callback1_done_(false) {
@@ -71,7 +71,7 @@ void Patrol::odometry_callback(
 
     // If the yaw error is significant, rotate towards the target
     if (std::abs(direction__yaw_ - current_yaw_) >
-        0.15) // 0.15 radians threshold for orientation
+        0.4) // 0.15 radians threshold for orientation
     {
       twist_msg.angular.z = direction_ / 2.0;
     } else {
@@ -90,8 +90,8 @@ void Patrol::laserscan_callback(
     const sensor_msgs::msg::LaserScan::SharedPtr laser_msg) {
   std::unique_lock<std::mutex> lock(mutex_);
 
-  min_distance = *std::min_element(laser_msg->ranges.begin() + 100,
-                                   laser_msg->ranges.begin() + 100);
+  min_distance =
+      *std::min_element(laser_msg->ranges.begin(), laser_msg->ranges.begin());
 
   condition_.wait(lock, [this] { return callback1_done_; });
 
@@ -105,8 +105,8 @@ void Patrol::laserscan_callback(
         true; // Temporarily pause the update for the it, index and direction_
               // until the current yaw error is eliminated
 
-    it = std::max_element(
-        laser_msg->ranges.begin() + 50, laser_msg->ranges.begin() + 150,
+    it_left = std::max_element(
+        laser_msg->ranges.begin(), laser_msg->ranges.begin() + 50,
         [](float a, float b) {
           // Replace 'inf' values with '-inf' for comparison purposes
           return (std::isfinite(a) ? a
@@ -114,15 +114,34 @@ void Patrol::laserscan_callback(
                  (std::isfinite(b) ? b
                                    : -std::numeric_limits<float>::infinity());
         });
-    index = std::distance(laser_msg->ranges.begin() + 50, it);
+    index_left = std::distance(laser_msg->ranges.begin(), it_left);
 
-    direction__yaw_ = (index - 50) * angle_increment_ +
-                      current_yaw_; // direction_yaw_ from global current_yaw_,
+    it_right = std::max_element(
+        laser_msg->ranges.end() - 50, laser_msg->ranges.end(),
+        [](float a, float b) {
+          // Replace 'inf' values with '-inf' for comparison purposes
+          return (std::isfinite(a) ? a
+                                   : -std::numeric_limits<float>::infinity()) <
+                 (std::isfinite(b) ? b
+                                   : -std::numeric_limits<float>::infinity());
+        });
+    index_right = std::distance(laser_msg->ranges.end() - 50, it_right);
+
+    RCLCPP_INFO(this->get_logger(), "L: %d, R: %d, LM: %f, RM: %f", index_left,
+                index_right, *it_left, *it_right);
+
+    direction__yaw_ =
+        *it_left > *it_right
+            ? index_left * angle_increment_ + current_yaw_
+            : (index_right - 50) * angle_increment_ + current_yaw_;
+
+    /*direction__yaw_ = (index - 50) * angle_increment_ +
+                      current_yaw_;*/ // direction_yaw_ from global current_yaw_,
                                     // fixed each time
     direction_ =
         direction__yaw_ - current_yaw_; // The angle from the front X axis
 
-    RCLCPP_INFO(this->get_logger(), "direction_: %f at %d", direction_, index);
+    RCLCPP_INFO(this->get_logger(), "direction_: %f", direction_);
 
     if (std::abs(direction__yaw_) >
         M_PI) { // If the abs of direction__yaw_ is larger than pi then it means
