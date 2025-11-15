@@ -3,7 +3,7 @@
 
 Patrol::Patrol()
     : Node("robot_patrol_node"), min_distance(0.0), max_distance(0.0),
-      angle_increment_(0.0315), index_left(0), index_right(0),
+      angle_increment_(0.014), index_left(0), index_right(0),
       direction__update_lock(false), direction__yaw_shift_alart(false),
       turning_(false), direction_(0.0), direction__yaw_(0.0), yaw_error_(0.0),
       roll(0.0), pitch(0.0), current_yaw_(0.0), callback1_done_(false) {
@@ -71,7 +71,7 @@ void Patrol::odometry_callback(
 
     // If the yaw error is significant, rotate towards the target
     if (std::abs(direction__yaw_ - current_yaw_) >
-        0.4) // 0.15 radians threshold for orientation
+        0.1) // 0.35 radians threshold for orientation
     {
       twist_msg.angular.z = direction_ / 2.0;
     } else {
@@ -106,7 +106,7 @@ void Patrol::laserscan_callback(
               // until the current yaw error is eliminated
 
     it_left = std::max_element(
-        laser_msg->ranges.begin(), laser_msg->ranges.begin() + 50,
+        laser_msg->ranges.begin(), laser_msg->ranges.begin() + 112,
         [](float a, float b) {
           // Replace 'inf' values with '-inf' for comparison purposes
           return (std::isfinite(a) ? a
@@ -117,7 +117,7 @@ void Patrol::laserscan_callback(
     index_left = std::distance(laser_msg->ranges.begin(), it_left);
 
     it_right = std::max_element(
-        laser_msg->ranges.end() - 50, laser_msg->ranges.end(),
+        laser_msg->ranges.end() - 112, laser_msg->ranges.end(),
         [](float a, float b) {
           // Replace 'inf' values with '-inf' for comparison purposes
           return (std::isfinite(a) ? a
@@ -125,7 +125,7 @@ void Patrol::laserscan_callback(
                  (std::isfinite(b) ? b
                                    : -std::numeric_limits<float>::infinity());
         });
-    index_right = std::distance(laser_msg->ranges.end() - 50, it_right);
+    index_right = std::distance(laser_msg->ranges.end() - 112, it_right);
 
     RCLCPP_INFO(this->get_logger(), "L: %d, R: %d, LM: %f, RM: %f", index_left,
                 index_right, *it_left, *it_right);
@@ -133,7 +133,7 @@ void Patrol::laserscan_callback(
     direction__yaw_ =
         *it_left > *it_right
             ? index_left * angle_increment_ + current_yaw_
-            : (index_right - 50) * angle_increment_ + current_yaw_;
+            : (index_right - 112) * angle_increment_ + current_yaw_;
 
     /*direction__yaw_ = (index - 50) * angle_increment_ +
                       current_yaw_;*/ // direction_yaw_ from global current_yaw_,
