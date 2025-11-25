@@ -18,6 +18,7 @@ find_package(tf2_ros REQUIRED)
 # Include directories
 include_directories(include)
 
+# robot_patrol
 add_executable(robot_patrol_node src/patrol_node.cpp)
 
 ament_target_dependencies(robot_patrol_node
@@ -66,9 +67,20 @@ target_link_libraries(direction_service_node
   direction_service_lib
 )
 
+# test_service
+add_executable(test_service_executable src/test_service.cpp)
+
+ament_target_dependencies(test_service_executable
+  direction_service_msg
+  rclcpp
+  sensor_msgs
+  std_msgs
+)
+
 install(TARGETS
   direction_service_node
   robot_patrol_node
+  test_service_executable
   DESTINATION lib/${PROJECT_NAME}
 )
 
