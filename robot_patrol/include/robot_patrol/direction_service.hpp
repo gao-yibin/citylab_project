@@ -16,7 +16,6 @@ private:
   rclcpp::Service<direction_service_msg::srv::GetDirection>::SharedPtr
       get_direction_service_;
   void direction_service_callback(
-      const std::shared_ptr<rmw_request_id_t>,
       const std::shared_ptr<direction_service_msg::srv::GetDirection::Request>
           request,
       const std::shared_ptr<direction_service_msg::srv::GetDirection::Response>
