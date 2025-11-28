@@ -32,6 +32,9 @@ void DirectionService::direction_service_callback(
           [](float acc, float val) -> float {
             return std::isfinite(val) ? acc + val : acc; // ignore inf/nan
           });
+      RCLCPP_INFO(this->get_logger(), "total_dist_sec_right: %f",
+                  total_dist_sec_right);
+
       total_dist_sec_front =
           std::accumulate(request->laser_data.ranges.begin() + 84,
                           request->laser_data.ranges.begin() + 127, 0.0f,
@@ -46,6 +49,7 @@ void DirectionService::direction_service_callback(
                           });
       max_sum = std::max(
           {total_dist_sec_right, total_dist_sec_front, total_dist_sec_left});
+      RCLCPP_INFO(this->get_logger(), "max_sum: %f", max_sum);
 
       if (max_sum == total_dist_sec_right) {
         response->direction = "right";
@@ -54,6 +58,8 @@ void DirectionService::direction_service_callback(
       } else {
         response->direction = "left";
       }
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Just Forward!");
     }
   }
 }
